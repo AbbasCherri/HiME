@@ -70,10 +70,10 @@ def test_P1_split_roles_and_buffer(root, B, seed):
 
 
 def test_P1_splits_repeat_mod5_clients_do_not(root):
-    a, b, c = (D.split(s, root).sort_values("building_id") for s in (1000, 1005, 1001))
+    a, b, c = (D.split(s, root).sort_values("building_id") for s in (1000, 2000, 1001))  # only the 50 registered seeds exist
     assert (a["split_role"].to_numpy() == b["split_role"].to_numpy()).all()
     assert (a["split_role"].to_numpy() != c["split_role"].to_numpy()).any()
-    x, _ = D.clients(100, 1000, root); y, _ = D.clients(100, 1005, root)
+    x, _ = D.clients(100, 1000, root); y, _ = D.clients(100, 2000, root)
     assert not x.sort_values("building_id")["client_id"].equals(y.sort_values("building_id")["client_id"])
 
 
@@ -86,9 +86,11 @@ def test_P1_clients_subset_calib_and_meta(root, B, N, seed):
     y = cl.merge(B[["building_id", "y_collapse"]], on="building_id")
     kept = y[y["client_id"] >= 0]
     lab = kept[kept["client_role"].isin(["train", "calib"])]
-    share = lab.groupby("client_id")["client_role"].apply(lambda r: (r == "calib").mean())
-    print(f"N={N} seed={seed}: clients {len(meta)}, calib share min {share.min():.3f} max {share.max():.3f}")
-    assert share.between(0.1, 0.3).all()
+    g0 = lab.groupby("client_id")["client_role"]
+    n_cal, n_lab = g0.apply(lambda r: (r == "calib").sum()), g0.size()
+    share = n_cal / n_lab
+    print(f"N={N} seed={seed}: clients {len(meta)}, labelled rows min {n_lab.min()}, calib share min {share.min():.3f} max {share.max():.3f}")
+    assert (np.abs(n_cal - 0.2 * n_lab) <= 1.0).all()               # exact 20% up to rounding of one row
     g = lab.groupby("client_id")
     rec = g.apply(lambda d: ((d["client_role"] == "calib") & (d["y_collapse"] == 1)).sum())
     assert (rec.reindex(meta["client_id"]).to_numpy() == meta["calib_collapsed_S"].to_numpy()).all()
