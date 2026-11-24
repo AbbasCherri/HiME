@@ -56,4 +56,6 @@ def fed_standardise_pca(stats, r=None):
 
 
 def transform(Z, mu, sd, P):
-    return ((Z - mu) / sd) @ P
+    Z = Z - mu
+    Z /= sd                                             # in place: one temporary, not two
+    return Z @ P
