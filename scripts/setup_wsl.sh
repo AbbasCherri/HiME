@@ -27,8 +27,23 @@ cd "$DIR"
 
 echo "==> Python 3.12 and locked dependencies"
 uv python install 3.12
-uv sync --python 3.12
+uv sync --python 3.12 --extra embed
 uv run python -c "import numpy, scipy, hypothesis, hime; print('numpy', numpy.__version__, 'scipy', scipy.__version__)"
+uv run python -c "import torch; print('torch', torch.__version__, 'CUDA', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')"
+
+echo "==> Dataset (read-only; never modified)"
+DATA="${HIME_DATA:-$HOME/HiME-dataset}"
+if [ -f "$DATA/derived/buildings.parquet" ]; then
+  echo "found $DATA"; du -sh "$DATA" 2>/dev/null || true
+else
+  echo "WARNING: $DATA/derived/buildings.parquet missing (upload still running?)"
+fi
+
+echo "==> Hugging Face access (DINOv3 weights are gated)"
+if [ -z "${HF_TOKEN:-}" ] && ! uv run hf auth whoami >/dev/null 2>&1; then
+  echo "Not logged in. Accept the DINOv3 licence on huggingface.co/facebook/dinov3-vitl16-pretrain-sat493m"
+  echo "and facebook/dinov3-vitb16-pretrain-lvd1689m, then run:  uv run hf auth login"
+fi
 
 echo "==> Output directory on disk (not /tmp)"
 mkdir -p runs
