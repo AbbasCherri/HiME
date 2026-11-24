@@ -26,7 +26,7 @@ step() {
   echo "    ${RESULT[$name]} in $((SECONDS - t0)) s  (log: $LOG/$name.log)"
 }
 
-PYT="uv run pytest -rs -s --durations=10"
+PYT="uv run pytest -rfEs -s --tb=short --durations=10"
 step p0_governance     $PYT tests/test_p0_governance.py
 step p1_realdata       $PYT tests/test_p1_realdata.py
 step p2_oracle         $PYT tests/test_p2_oracle.py
@@ -44,6 +44,8 @@ for k in p0_governance p1_realdata p2_oracle p3_experts p4_fusion p5_placement p
   printf "%-18s %s\n" "$k" "${RESULT[$k]}" | tee -a "$LOG/summary.txt"
   [ "${RESULT[$k]}" = "Failed" ] && FAIL=1
 done
+{ echo; echo "Failures:"; grep -h "^FAILED\|^ERROR\|^E  " "$LOG"/*.log | head -60; } >> "$LOG/summary.txt" 2>/dev/null || true
 grep -h "O5 evidence\|greedy/opt\|w_SI under\|distance to central" "$LOG"/*.log >> "$LOG/summary.txt" 2>/dev/null || true
 [ -f runs/smoke.json ] && cp runs/smoke.json "$LOG/"
+echo; sed -n "/^Failures:/,\$p" "$LOG/summary.txt"
 exit $FAIL
