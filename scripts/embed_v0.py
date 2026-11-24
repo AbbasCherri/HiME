@@ -25,7 +25,7 @@ root = D.data_root()
 b = D.buildings(root)
 if a.limit:
     b = b.iloc[: a.limit]
-    a.out = str(Path(a.out) / f"limit{a.limit}")
+    a.out = str(Path(a.out) / f"limit{a.limit}_{time.strftime('%Y%m%d-%H%M%S')}")   # fresh: never time cached output
 lock_f = Path(a.out) / "data_lock.json"
 lock = json.loads(lock_f.read_text()) if lock_f.exists() else {}
 for enc in a.encoders:
