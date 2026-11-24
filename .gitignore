@@ -4,3 +4,4 @@ runs/
 data/
 *.egg-info/
 .pytest_cache/
+docs/papers/*.pdf
