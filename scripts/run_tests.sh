@@ -32,7 +32,9 @@ step() {
   echo "==> $name"
   local t0=$SECONDS
   if "$@" > "$LOG/$name.log" 2>&1; then RESULT[$name]="Passed"; else RESULT[$name]="Failed"; fi
-  if grep -q "Blocked" "$LOG/$name.log" && [ "${RESULT[$name]}" = "Passed" ]; then RESULT[$name]="Passed (data Blocked)"; fi
+  if grep -q "Blocked" "$LOG/$name.log"; then
+    if [ "${RESULT[$name]}" = "Passed" ]; then RESULT[$name]="Passed (some Blocked)"; else RESULT[$name]="Blocked"; fi
+  fi
   echo "    ${RESULT[$name]} in $((SECONDS - t0)) s  (log: $LOG/$name.log)"
 }
 
