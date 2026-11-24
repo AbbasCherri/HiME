@@ -91,12 +91,12 @@ def test_P1_clients_subset_calib_and_meta(root, B, N, seed):
     assert share.between(0.1, 0.3).all()
     g = lab.groupby("client_id")
     rec = g.apply(lambda d: ((d["client_role"] == "calib") & (d["y_collapse"] == 1)).sum())
-    assert (rec.reindex(meta["client_id"]).to_numpy() == meta["calib_collapsed_I"].to_numpy()).all()
+    assert (rec.reindex(meta["client_id"]).to_numpy() == meta["calib_collapsed_S"].to_numpy()).all()
 
 
 def test_P1_single_class_calibration_clients(root):
     _, meta = D.clients(100, 1000, root)
-    n = int((meta["calib_collapsed_I"] == 0).sum())
+    n = int((meta["calib_collapsed_S"] == 0).sum())
     print("N=100 seed=1000 clients without a collapsed calibration row:", n, "of", len(meta))
     assert n == 63
 
