@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Runs every test layer and the smoke run, logging each step to runs/test_logs/<timestamp>/.
 # Keeps going after a failure; exits non-zero if any step failed.
-# Usage: bash scripts/run_tests.sh [--pull] [--gpu] [--embed-all]
+# Usage: bash scripts/run_tests.sh [--pull] [--gpu] [--embed-all] [--select-v0]
 #   --gpu        also: embedding throughput test (2,000 buildings, every encoder) and the imagery audit
 #   --embed-all  also: the full V0 embedding grid (hours)
+#   --select-v0  also: Phase 9.1 leave-fold-out feature selection on the built grid
 set -uo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.local/bin:$PATH"
@@ -11,9 +12,9 @@ export PATH="$HOME/.local/bin:$PATH"
 # Determinism controls are set by the launcher, not inside Python (plan section 7).
 export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 
-PULL=0; GPU=0; EMBED=0; REST=()
+PULL=0; GPU=0; EMBED=0; SEL=0; REST=()
 for a in "$@"; do
-  case "$a" in --pull) PULL=1 ;; --gpu) GPU=1; REST+=("$a") ;; --embed-all) EMBED=1; REST+=("$a") ;; esac
+  case "$a" in --pull) PULL=1 ;; --gpu) GPU=1; REST+=("$a") ;; --embed-all) EMBED=1; REST+=("$a") ;; --select-v0) SEL=1; REST+=("$a") ;; esac
 done
 if [ $PULL = 1 ]; then
   git pull --ff-only && uv sync --python 3.12 --extra embed
@@ -60,6 +61,10 @@ if [ $EMBED = 1 ]; then
   step embed_all uv run python scripts/embed_v0.py
   STEPS="$STEPS embed_all"
 fi
+if [ $SEL = 1 ]; then
+  step select_v0 uv run python scripts/select_v0.py
+  STEPS="$STEPS select_v0"
+fi
 
 echo
 echo "Summary ($LOG/summary.txt)"
@@ -71,7 +76,7 @@ done
 F=$(grep -h "^FAILED\|^ERROR\|^E  " "$LOG"/*.log | head -60)
 [ -n "$F" ] && printf "\nFailures:\n%s\n" "$F" >> "$LOG/summary.txt"
 echo >> "$LOG/summary.txt"; echo "Measurements:" >> "$LOG/summary.txt"
-grep -h "O5 evidence\|greedy/opt\|w_SI under\|distance to central\|^N=\|fold 0:\|clients without\|calib share\|floored\|has_post\|images/s\|FAILED (\|Blocked\|flagged" "$LOG"/*.log >> "$LOG/summary.txt" 2>/dev/null || true
+grep -h "O5 evidence\|greedy/opt\|w_SI under\|distance to central\|^N=\|fold 0:\|clients without\|calib share\|floored\|has_post\|images/s\|FAILED (\|Blocked\|flagged\|^test fold\|^  v0:" "$LOG"/*.log >> "$LOG/summary.txt" 2>/dev/null || true
 [ -f runs/smoke.json ] && cp runs/smoke.json "$LOG/"
 echo; sed -n "/^Failures:\|^Measurements:/,\$p" "$LOG/summary.txt"
 exit $FAIL
