@@ -11,7 +11,11 @@ def prepare(w, r=None, lam=1e-4, bins=1000, monotone=6):
     xS, xI = w["xS"], w["xI"]
     knots = [fed_knots([xS[r_, f] for r_ in rows], bins) for f in range(xS.shape[1])]
     blocks = [ispline_basis(xS[:, f], t) for f, t in enumerate(knots)]
-    XS = np.hstack([np.ones((len(xS), 1))] + blocks)
+    B = np.hstack(blocks)
+    # Exact federated column standardisation of the I-spline block: positive rescaling keeps beta >= 0
+    # equivalent to monotonicity, and removes the ill-conditioning that slows federated GD.
+    smu, ssd, _ = fed_standardise_pca([suff_stats(B[r_]) for r_ in rows if len(r_)])
+    XS = np.c_[np.ones(len(xS)), (B - smu) / ssd]
     nonneg = np.concatenate([[False]] + [np.full(b.shape[1], f < monotone) for f, b in enumerate(blocks)])
     mu, sd, P = fed_standardise_pca([suff_stats(xI[r_]) for r_ in rows if len(r_)], r)
     XI = np.c_[np.ones(len(xI)), transform(xI, mu, sd, P)]
