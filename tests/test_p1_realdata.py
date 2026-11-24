@@ -93,7 +93,7 @@ def test_P1_clients_subset_calib_and_meta(root, B, N, seed):
     assert (np.abs(n_cal - 0.2 * n_lab) <= 1.0).all()               # exact 20% up to rounding of one row
     g = lab.groupby("client_id")
     rec = g.apply(lambda d: ((d["client_role"] == "calib") & (d["y_collapse"] == 1)).sum())
-    assert (rec.reindex(meta["client_id"]).to_numpy() == meta["calib_collapsed_S"].to_numpy()).all()
+    assert (rec.reindex(meta["client_id"], fill_value=0).to_numpy() == meta["calib_collapsed_S"].to_numpy()).all()
 
 
 def test_P1_single_class_calibration_clients(root):
