@@ -74,6 +74,13 @@ for k in $STEPS; do
   [ "${RESULT[$k]}" = "Failed" ] && FAIL=1
 done
 F=$(grep -h "^FAILED\|^ERROR\|^E  " "$LOG"/*.log | head -60)
+for k in $STEPS; do   # plain Python tracebacks match none of the pytest patterns above
+  if [ "${RESULT[$k]}" = "Failed" ] && grep -q "Traceback" "$LOG/$k.log"; then
+    F="$F${F:+
+}--- $k (last 20 lines) ---
+$(tail -n 20 "$LOG/$k.log")"
+  fi
+done
 [ -n "$F" ] && printf "\nFailures:\n%s\n" "$F" >> "$LOG/summary.txt"
 echo >> "$LOG/summary.txt"; echo "Measurements:" >> "$LOG/summary.txt"
 grep -h "O5 evidence\|greedy/opt\|w_SI under\|distance to central\|^N=\|fold 0:\|clients without\|calib share\|floored\|has_post\|images/s\|FAILED (\|Blocked\|flagged\|^test fold\|^  v0:" "$LOG"/*.log >> "$LOG/summary.txt" 2>/dev/null || true
