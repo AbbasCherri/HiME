@@ -22,15 +22,16 @@ Set `HIME_DATA=/path/to/release` to enable the real-data tests.
 | Phase | Status |
 |---|---|
 | 0 Scaffold, RNG, provenance | Written. Claim/ambiguity/source ledgers folded into this file |
-| 1 Data layer, imagery audit | Blocked: dataset and schema absent. Seed-role guard and TestVault written |
+| 1 Data layer, imagery audit | Written: read-only loader (`hime/data.py`), contract tests, imagery audit script. Not yet run |
 | 2 Oracle world | Written (`hime/oracle.py`) |
 | 3 Features, experts | Written |
 | 4 Fusion | Written. D7 missing-chip offset not attempted |
 | 5 Placement | Written, incl. exact MILP and H6 ratio dump to `runs/` |
 | 6 Participation | Written. O5 capped-case evidence printed by test |
 | 7 Engine, hierarchy, bytes | Written. Smoke script in `scripts/smoke.py` |
-| 8 Baselines B1-B12 | Not attempted: each needs its full paper read first (plan rule) |
-| 9-12 V0 grid, tuning, freeze, runs, release | Blocked on data, baselines and GPU |
+| 8 Baselines B1-B12 | Waiting for PDFs listed in docs/PAPERS.md |
+| 9 V0 grid | Embedding script written (`scripts/embed_v0.py`); selection and tuning not yet written |
+| 10-12 | Blocked on baselines |
 
 ## Assumptions made where the plan or design v1 was not available (AMBIGUITY_LOG)
 1. Design v1 Proposition 7 is not in hand. `schedule.kappas` minimises sum drift_m kappa_m^p subject to
@@ -47,7 +48,10 @@ Set `HIME_DATA=/path/to/release` to enable the real-data tests.
 6. Predicted importance for placement is the last probed a_i (staleness rule of design v1 section 10 not in hand).
 7. E_S spline columns are standardised with exact federated statistics. Monotonicity is unchanged
    (positive rescaling); the ridge now acts on rescaled coefficients.
-8. The oracle's seismic features are Gaussian, not ShakeMap values; monotone constraints apply to blocks 0-5.
+8. MMI_shape is undefined in every source the release checked, so E_S uses six features, all monotone.
+9. Imagery audit compares against every dated 2024 layer (latest wins), not only the 17 Jan layers.
+10. Initial UAV positions are k-means centroids of non-direct client medoids.
+11. The oracle's seismic features are Gaussian, not ShakeMap values; monotone constraints apply to blocks 0-5.
 
 ## Evidence from the first WSL run (24 Nov 2026, oracle world only)
 | Check | Result |
