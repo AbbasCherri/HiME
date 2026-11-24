@@ -12,6 +12,7 @@ from hime import data as D
 from hime.engine import Config, central, evaluate, run
 from hime.pipeline import prepare
 from hime.rng import stream
+from hime.schedule import kappas
 from hime.uav import best_altitude, calibrate_K, kmeans
 
 ap = argparse.ArgumentParser()
@@ -39,11 +40,13 @@ for N in a.N:
         uav0 = kmeans(pb["client_xy"][nd], K, np.ones(nd.sum()), stream(seed, "kmeans"))
         cov = (np.hypot(pb["client_xy"][:, None, 0] - uav0[None, :, 0], pb["client_xy"][:, None, 1] - uav0[None, :, 1]) <= rad).any(1) | pb["direct"]
         M = max(1, round(0.5 * float(pb["alpha"][cov].sum())))
-        cfg = Config(T=a.T, M=M, C=math.ceil(1.5 * M / K), seed=seed)
+        P = np.array([e.nbytes for e in pb["experts"].values()], float)
+        kap = kappas(P, np.ones(len(P)), K, budget=0.25 * 2 * M * P.sum())   # B_bh = 0.25 x relay-everything
+        cfg = Config(T=a.T, M=M, C=math.ceil(1.5 * M / K), kappa=tuple(int(k) for k in kap), seed=seed)
         out = run(pb, cfg, uav0, theta_star=ts)
         ev = evaluate(pb, out["theta"])
         prev = ev["prevalence"]
-        rec = dict(N=N, seed=seed, K=K, M=M, radius_m=rad, altitude_m=h, coverage0=float(cov.mean()),
+        rec = dict(N=N, seed=seed, K=K, M=M, kappa=list(cfg.kappa), Tp=out["Tp"], radius_m=rad, altitude_m=h, coverage0=float(cov.mean()),
                    direct=int(pb["direct"].sum()), nonpositive_im=w["nonpositive_im"], central=ref, hime2=ev,
                    bytes=out["bytes"], degenerate={k: v < 3 * prev for k, v in
                                                    (("hime2", ev["auprc"]), ("central", ref["auprc"]),
