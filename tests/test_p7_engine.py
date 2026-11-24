@@ -77,10 +77,14 @@ def test_P7_converges_to_central_in_controlled_setting(small):
     pc = dict(pb); pc["direct"] = np.ones(N, bool); pc["alpha"] = np.ones(N)
     ts = central(pc)
     out = run(pc, Config(T=80, M=N, C=N, seed=1005, eval_every=10, use_chi=False), uav, theta_star=ts)
-    for m in ("S", "I"):
+    rows = np.concatenate(pc["client_rows"])
+    for m, e in pc["experts"].items():
         d = [r[f"dist_{m}"] for r in out["history"] if f"dist_{m}" in r]
-        print(m, "distance to central optimum:", d)
-        assert d[-1] < d[0] and d[-1] < 0.5 * max(d)
+        X, y = pc["X"][m][rows], pc["y"][rows]
+        f0, fT, fs = (e.loss(t, X, y) for t in (np.zeros(e.dim), out["theta"][m], ts[m]))
+        print(m, "distance to central optimum:", d, "objective gap ratio:", (fT - fs) / (f0 - fs))
+        assert all(a > b for a, b in zip(d, d[1:]))          # distance falls at every evaluation
+        assert (fT - fs) / (f0 - fs) < 0.2                    # most of the objective gap closed
 
 
 def test_H10_correction_reduces_drift_at_kappa4(small):
