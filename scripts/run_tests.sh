@@ -74,8 +74,8 @@ for k in $STEPS; do
   [ "${RESULT[$k]}" = "Failed" ] && FAIL=1
 done
 F=$(grep -h "^FAILED\|^ERROR\|^E  " "$LOG"/*.log | head -60)
-for k in $STEPS; do   # plain Python tracebacks match none of the pytest patterns above
-  if [ "${RESULT[$k]}" = "Failed" ] && grep -q "Traceback" "$LOG/$k.log"; then
+for k in $STEPS; do   # plain Python tracebacks and script errors match none of the pytest patterns above
+  if [ "${RESULT[$k]}" = "Failed" ] && { grep -q "Traceback" "$LOG/$k.log" || ! grep -q "^FAILED\|^ERROR\|^E  " "$LOG/$k.log"; }; then
     F="$F${F:+
 }--- $k (last 20 lines) ---
 $(tail -n 20 "$LOG/$k.log")"
