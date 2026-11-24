@@ -46,3 +46,12 @@ Set `HIME_DATA=/path/to/release` to enable the real-data tests.
    and not counted on UAV backhaul. Check against design v1 Proposition 6.
 6. Predicted importance for placement is the last probed a_i (staleness rule of design v1 section 10 not in hand).
 7. The oracle's seismic features are Gaussian, not ShakeMap values; monotone constraints apply to blocks 0-5.
+
+## Evidence from the first WSL run (24 Nov 2026, oracle world only)
+| Check | Result |
+|---|---|
+| Theorem 2 when units are capped (O5) | 157 capped instances, dominance never violated |
+| Greedy / exact optimum (H6, 200 instances) | min 0.73, mean 0.97; bound 0.5 holds |
+| Stacker w_SI with assumption (a) violated | 0.64 (0 expected when (a) holds) |
+| Drift correction at kappa = 4 (H10) | distance 11.012 vs 11.017 without: negligible here |
+| Controlled convergence, E_S | distance falls every evaluation but slowly (9.61 to 8.51 in 80 rounds): ill-conditioned spline basis |
