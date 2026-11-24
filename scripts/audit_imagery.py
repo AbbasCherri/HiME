@@ -33,8 +33,8 @@ def emb(layer, src):
     sel = ids[have]
     d = out / layer
     if not (d / "dinov2_vits14" / "chip_cls_none.npy").exists():
-        embed("dinov2_vits14", src, layer, sel, lat[have], lon[have], d)
-    E = np.load(d / "dinov2_vits14" / "chip_cls_none.npy")[:, :]
+        embed("dinov2_vits14", src, layer, sel, lat[have], lon[have], d, scales=("chip",), d8=False)
+    E = np.load(d / "dinov2_vits14" / "chip_cls_none.npy")
     return sel, E / np.linalg.norm(E, axis=1, keepdims=True)
 
 
