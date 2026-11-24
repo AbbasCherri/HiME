@@ -5,8 +5,10 @@ Usage: uv run python scripts/select_v0.py [--encoders dinov2_vits14 dinov2_vitb1
 import argparse
 import itertools
 import json
+import multiprocessing as mp
 import sys
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +22,7 @@ ap.add_argument("--encoders", nargs="+", default=None, help="default: every enco
 ap.add_argument("--emb-root", default="runs/embeddings")
 ap.add_argument("--seeds", type=int, nargs="+", default=[1000, 1001, 1002, 1003, 1004])
 ap.add_argument("--rs", type=int, nargs="+", default=[64, 128, 256, 0], help="0 = full dimension")
-ap.add_argument("--workers", type=int, default=3)
+ap.add_argument("--workers", type=int, default=2, help="each worker can need several GB for full-dim cells")
 ap.add_argument("--out", default="runs/v0")
 a = ap.parse_args()
 NEED = ["ids.npy"] + [f"{s}_{p}_{t}.npy" for s in ("chip", "ctx") for p in ("cls", "mean") for t in ("none", "d8")]
@@ -54,17 +56,27 @@ def fit_cell(job):
         pb = prepare(w, r=r or None)
         e, X, y = pb["experts"]["I"], pb["X"]["I"], pb["y"]
         tr = np.concatenate(pb["client_rows"] + [pb["calib_rows"]])     # central: whole labelled pool
+        Xtr, Xte = X[tr], X[pb["test_rows"]]
+        dim = X.shape[1] - 1
+        del pb, X
         for lam in lams:
             e.lam = lam
-            th = e.fit_central(X[tr], y[tr])
-            out.append(dict(cell=cell, r=r or X.shape[1] - 1, lam=lam, seed=seed,
-                            auprc=average_precision(y[pb["test_rows"]], X[pb["test_rows"]] @ th)))
+            th = e.fit_central(Xtr, y[tr])
+            out.append(dict(cell=cell, r=r or dim, lam=lam, seed=seed,
+                            auprc=average_precision(y[w["test"]], Xte @ th)))
+        del Xtr, Xte
     return out
 
 
 def run(jobs):
-    with ProcessPoolExecutor(a.workers) as ex:
-        return [x for rs in ex.map(fit_cell, jobs) for x in rs]
+    """Fresh spawned worker per job, so no worker carries one cell's memory into the next."""
+    try:
+        with ProcessPoolExecutor(a.workers, mp_context=mp.get_context("spawn"), max_tasks_per_child=1) as ex:
+            return [x for rs in ex.map(fit_cell, jobs) for x in rs]
+    except BrokenProcessPool:
+        print(f"select_v0: a worker was killed abruptly (most likely out of memory) with --workers {a.workers}; "
+              f"rerun with fewer workers, e.g. --workers 1", file=sys.stderr, flush=True)
+        sys.exit(1)
 
 
 def choose(res, f, key):
