@@ -5,11 +5,10 @@ Written on a dev machine without the dataset, without a GPU, and without running
 
 ## Run on the execution machine
 ```
-uv sync
-uv run pytest            # Phases 0, 2-7; real-data test skips as Blocked without HIME_DATA
-uv run python scripts/smoke.py
-HIME_DATA=/path/to/release uv run pytest tests/test_p1_realdata.py
+bash scripts/setup_wsl.sh      # once: apt packages, uv, clone, Python 3.12, deps
+bash scripts/run_tests.sh      # all test layers + smoke; logs in runs/test_logs/
 ```
+Set `HIME_DATA=/path/to/release` to enable the real-data tests.
 
 ## Gates
 | Gate | Status | Note |
