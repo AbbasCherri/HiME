@@ -1,7 +1,7 @@
 # HiME-2 implementation status (plan v2, 20 Nov 2026)
 
-Written on a dev machine without the dataset, without a GPU, and without running any code
-(only a syntax compile). All tests are to be run on the execution machine.
+Written on a dev machine; executed on the WSL machine. All test layers for Phases 0 and 2-7 and the
+smoke run pass there on the synthetic oracle world (24 Nov 2026).
 
 ## Run on the execution machine
 ```
@@ -13,8 +13,8 @@ Set `HIME_DATA=/path/to/release` to enable the real-data tests.
 ## Gates
 | Gate | Status | Note |
 |---|---|---|
-| A engineering | Not attempted | Code and tests written, never executed |
-| B fidelity | Not attempted | Proposition tests exist for 1, 2, 3', 4', 9, 10, 11, Lemma 1', 7', 8, 9', Theorem 1, Theorem 2 (uncapped) |
+| A engineering | Passed (oracle world) | Tests for Phases 0, 2-7 and the smoke run pass on WSL; real-data layer Blocked |
+| B fidelity | Partially verified | Proposition tests exist for 1, 2, 3', 4', 9, 10, 11, Lemma 1', 7', 8, 9', Theorem 1, Theorem 2 (uncapped) |
 | C reproduction | Blocked | No dataset; baselines unimplemented |
 | D independent | Not attempted | Never self-awarded |
 
@@ -55,5 +55,6 @@ Set `HIME_DATA=/path/to/release` to enable the real-data tests.
 | Theorem 2 when units are capped (O5) | 157 capped instances, dominance never violated |
 | Greedy / exact optimum (H6, 200 instances) | min 0.73, mean 0.97; bound 0.5 holds |
 | Stacker w_SI with assumption (a) violated | 0.64 (0 expected when (a) holds) |
-| Drift correction at kappa = 4 (H10) | distance 11.012 vs 11.017 without: negligible here |
-| Controlled convergence, E_S | distance falls every evaluation but slowly (9.61 to 8.51 in 80 rounds): ill-conditioned spline basis |
+| Drift correction at kappa = 4 (H10) | distance 2.919 vs 2.935 without: small here |
+| Controlled convergence | Objective gap closed: E_S 96.5%, E_I 99.95% in 80 rounds; distance falls every evaluation |
+| Seismic column standardisation | E_S start distance 9.61 to 1.24; gap ratio 0.23 to 0.035 |
