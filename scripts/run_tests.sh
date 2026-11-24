@@ -47,8 +47,10 @@ for k in p0_governance p1_realdata p2_oracle p3_experts p4_fusion p5_placement p
   printf "%-18s %s\n" "$k" "${RESULT[$k]}" | tee -a "$LOG/summary.txt"
   [ "${RESULT[$k]}" = "Failed" ] && FAIL=1
 done
-{ echo; echo "Failures:"; grep -h "^FAILED\|^ERROR\|^E  " "$LOG"/*.log | head -60; } >> "$LOG/summary.txt" 2>/dev/null || true
+F=$(grep -h "^FAILED\|^ERROR\|^E  " "$LOG"/*.log | head -60)
+[ -n "$F" ] && printf "\nFailures:\n%s\n" "$F" >> "$LOG/summary.txt"
+echo >> "$LOG/summary.txt"; echo "Measurements:" >> "$LOG/summary.txt"
 grep -h "O5 evidence\|greedy/opt\|w_SI under\|distance to central" "$LOG"/*.log >> "$LOG/summary.txt" 2>/dev/null || true
 [ -f runs/smoke.json ] && cp runs/smoke.json "$LOG/"
-echo; sed -n "/^Failures:/,\$p" "$LOG/summary.txt"
+echo; sed -n "/^Failures:\|^Measurements:/,\$p" "$LOG/summary.txt"
 exit $FAIL
