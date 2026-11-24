@@ -35,7 +35,34 @@ def fit_stacker(gS, gI, y, logit_pi, gamma=None, interaction=True, p_init=None):
     bounds = [(None, None), (0, None), (0, None), (None, None)][:k]
     r = minimize(stacker_objective, p_init, args=(gS, gI, y, logit_pi, gamma, interaction), jac=True,
                  method="L-BFGS-B", bounds=bounds, options=dict(pgtol=1e-10, ftol=1e-15, maxiter=10000))
-    return r.x
+    lower = np.array([-np.inf if b[0] is None else b[0] for b in bounds])
+    return _newton_polish(r.x, gS, gI, y, logit_pi, gamma, interaction, lower)
+
+
+def _newton_polish(p, gS, gI, y, logit_pi, gamma, interaction, lower, iters=50):
+    """Projected Newton on the (strongly convex, <= 4-parameter) stacker objective: L-BFGS-B can stop
+    early on flat ridges; this drives every start to the unique minimiser to machine precision."""
+    F = _features(gS, gI, interaction)
+    obj = lambda q: stacker_objective(q, gS, gI, y, logit_pi, gamma, interaction)
+    for _ in range(iters):
+        f, g = obj(p)
+        free = ~((p <= lower + 1e-12) & (g > 0))
+        if not free.any() or np.abs(g[free]).max() < 1e-13:
+            break
+        w = sigmoid(logit_pi + F @ p); w = w * (1 - w)
+        H = F.T @ (F * w[:, None]) / len(y) + gamma * np.eye(len(p))
+        d = np.zeros_like(p)
+        d[free] = -np.linalg.solve(H[np.ix_(free, free)], g[free])
+        t = 1.0
+        while True:
+            q = np.maximum(p + t * d, lower)
+            if obj(q)[0] <= f + 1e-4 * g @ (q - p) or t < 1e-12:
+                break
+            t /= 2
+        if t < 1e-12:
+            break
+        p = q
+    return p
 
 
 def stacker_logit(p, gS, gI, logit_pi):
