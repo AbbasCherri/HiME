@@ -60,15 +60,27 @@ def test_P7_deterministic_and_common_random_numbers(small):
     assert [r["available"] for r in a["history"]] == [r["available"] for r in c["history"]]
 
 
-def test_P7_tiny_run_beats_prevalence_and_approaches_central(small):
+def test_P7_tiny_run_beats_prevalence(small):
     w, pb, uav = small
     ts = central(pb)
     out = run(pb, Config(T=60, M=10, seed=1004, eval_every=10), uav, theta_star=ts)
     ev = evaluate(pb, out["theta"])
-    print(ev, [r.get("dist_I") for r in out["history"] if "dist_I" in r])
+    print("realistic run:", ev, "gap to central (E_I):", [r["dist_I"] for r in out["history"] if "dist_I" in r])
     assert ev["auprc"] > 2 * ev["prevalence"]
-    d = [r["dist_I"] for r in out["history"] if "dist_I" in r]
-    assert d[-1] < d[0]
+
+
+def test_P7_converges_to_central_in_controlled_setting(small):
+    """All clients direct, always available, full participation: the only gap left is local-step drift,
+    which shrinks with the decaying local step size. Realistic gaps are measured, not asserted (O1)."""
+    w, pb, uav = small
+    N = len(pb["client_rows"])
+    pc = dict(pb); pc["direct"] = np.ones(N, bool); pc["alpha"] = np.ones(N)
+    ts = central(pc)
+    out = run(pc, Config(T=80, M=N, C=N, seed=1005, eval_every=10, use_chi=False), uav, theta_star=ts)
+    for m in ("S", "I"):
+        d = [r[f"dist_{m}"] for r in out["history"] if f"dist_{m}" in r]
+        print(m, "distance to central optimum:", d)
+        assert d[-1] < d[0] and d[-1] < 0.5 * max(d)
 
 
 def test_H10_correction_reduces_drift_at_kappa4(small):
