@@ -45,7 +45,9 @@ Set `HIME_DATA=/path/to/release` to enable the real-data tests.
    round; backhaul per sync = up + down (+ correction down) per active UAV edge. Direct edge 0 is terrestrial
    and not counted on UAV backhaul. Check against design v1 Proposition 6.
 6. Predicted importance for placement is the last probed a_i (staleness rule of design v1 section 10 not in hand).
-7. The oracle's seismic features are Gaussian, not ShakeMap values; monotone constraints apply to blocks 0-5.
+7. E_S spline columns are standardised with exact federated statistics. Monotonicity is unchanged
+   (positive rescaling); the ridge now acts on rescaled coefficients.
+8. The oracle's seismic features are Gaussian, not ShakeMap values; monotone constraints apply to blocks 0-5.
 
 ## Evidence from the first WSL run (24 Nov 2026, oracle world only)
 | Check | Result |
