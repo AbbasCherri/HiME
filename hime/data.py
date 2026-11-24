@@ -80,6 +80,10 @@ def clients(N, seed, root=None):
 
 def embeddings(encoder="dinov2_vits14", layer="seamlessphoto", root=None, emb_root=None):
     """Memory-mapped (ids, vectors). `emb_root` points at locally built V0 embeddings (never the data root)."""
+    if encoder.startswith("v0:"):                 # "v0:<encoder>:<cls|cls+mean>:<none|d8>:<0|1>" (Phase 9 grid)
+        from .encoders import features
+        _, enc, pool, tta, ctx = encoder.split(":")
+        return features(emb_root or "runs/embeddings", enc, pool, tta, ctx == "1")
     base = Path(emb_root) if emb_root else Path(root or data_root()) / "embeddings"
     d = base / encoder
     return np.load(d / f"{layer}.ids.npy"), np.load(d / f"{layer}.npy", mmap_mode="r")
