@@ -62,3 +62,12 @@ Set `HIME_DATA=/path/to/release` to enable the real-data tests.
 | Drift correction at kappa = 4 (H10) | distance 2.919 vs 2.935 without: small here |
 | Controlled convergence | Objective gap closed: E_S 96.5%, E_I 99.95% in 80 rounds; distance falls every evaluation |
 | Seismic column standardisation | E_S start distance 9.61 to 1.24; gap ratio 0.23 to 0.035 |
+
+## First real-data run (24 Nov 2026, seed 1000, N = 100, validation fold)
+| Check | Result |
+|---|---|
+| Contracts | Counts, has_pre = 0, buffer, folds, embeddings, 63/100 single-class clients reproduced; all post chips `ok`; no non-positive intensities |
+| Val AUPRC (prevalence 0.027) | HiME-2 0.267; central ensemble 0.285; central E_I 0.292; central E_S 0.048 |
+| Placement | r = 1,397 m; K hit the cap of 30 with 38% coverage, so the 70% rule cannot be met at L_max 120 dB |
+| Embedding throughput (A4500) | DINOv2 ViT-S 1,272 img/s; ViT-B 228 img/s; DINOv3 blocked by gated weights |
+| Imagery audit | Blocked: dated 2024 and 2022 chips absent on WSL |
