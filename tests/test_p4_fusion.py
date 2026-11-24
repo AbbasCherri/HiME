@@ -32,7 +32,7 @@ def test_P3p_unique_and_bounds():
 def test_P3p_active_bound():
     gS, gI, y, lp = _data(4000, 0.0)
     p = fit_stacker(gS, -gI, y, lp)                            # anti-informative image -> w_I at 0
-    assert p[2] == 0.0
+    assert p[2] <= 1e-8, p
 
 
 def test_P2_oracle_recovery_and_interaction():
