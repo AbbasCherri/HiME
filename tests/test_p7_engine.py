@@ -20,7 +20,7 @@ def test_P4p_routing_monotone():
     part = np.full(100, 23)
     us = [u_fed(516, part, 4, 100, k) for k in range(1, 20)]
     assert all(a >= b for a, b in zip(us, us[1:]))
-    assert federate(516, part, 4, 100, 600 * 513) and federate(144, part, 4, 100, 600 * 29)
+    assert federate(516, part, 4, 100, 100 * 600 * 513) and federate(144, part, 4, 100, 100 * 600 * 29)
 
 
 def _free(pb):
