@@ -123,10 +123,26 @@ def embed(enc, root, layer, ids, lat, lon, out, batch=128, workers=8, device="cu
             np.save(out / f"{scale}_{k}.npy", np.concatenate(v).astype(np.float32))
 
 
+class ColumnConcat:
+    """Column-wise concatenation of memory-mapped arrays, materialised only for the rows indexed."""
+
+    def __init__(self, parts):
+        self.parts = parts
+        self.shape = (len(parts[0]), sum(p.shape[1] for p in parts))
+        self.dtype = parts[0].dtype
+
+    def __len__(self):
+        return self.shape[0]
+
+    def __getitem__(self, k):
+        return np.hstack([np.asarray(p[k]) for p in self.parts])
+
+
 def features(emb_root, enc, pool="cls", tta="none", ctx=False):
-    """One V0 grid cell: pool in {cls, cls+mean}; tta in {none, d8}; ctx adds the 256 px context scale."""
+    """One V0 grid cell: pool in {cls, cls+mean}; tta in {none, d8}; ctx adds the 256 px context scale.
+    Returns (ids, E) with E row-indexable; the full grid is never loaded into memory."""
     d = Path(emb_root) / enc
     parts = [("chip", "cls")] + ([("chip", "mean")] if pool == "cls+mean" else [])
     if ctx:
         parts += [("ctx", p) for _, p in parts]
-    return np.load(d / "ids.npy"), np.hstack([np.load(d / f"{s}_{p}_{tta}.npy", mmap_mode="r") for s, p in parts])
+    return np.load(d / "ids.npy"), ColumnConcat([np.load(d / f"{s}_{p}_{tta}.npy", mmap_mode="r") for s, p in parts])

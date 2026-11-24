@@ -117,7 +117,9 @@ def world(N, seed, eval_role="val", encoder="dinov2_vits14", emb_root=None, root
     ids, E = embeddings(encoder, root=root, emb_root=emb_root)
     pos = np.searchsorted(ids, b["building_id"].to_numpy())
     assert (ids[pos] == b["building_id"].to_numpy()).all(), "embedding ids do not cover the rows"
-    xI = np.asarray(E[np.sort(pos)], dtype=np.float64)[np.argsort(np.argsort(pos))]
+    o = np.argsort(pos)                           # read rows in file order; one float64 copy of the rows only
+    xI = np.empty((len(pos), E.shape[1]))
+    xI[o] = E[pos[o]]
     xS, nonpos = seismic_features(b)
     cid = np.sort(meta["client_id"].unique())
     remap = {c: k for k, c in enumerate(cid)}
