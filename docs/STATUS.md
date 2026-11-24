@@ -22,7 +22,7 @@ Set `HIME_DATA=/path/to/release` to enable the real-data tests.
 | Phase | Status |
 |---|---|
 | 0 Scaffold, RNG, provenance | Written. Claim/ambiguity/source ledgers folded into this file |
-| 1 Data layer, imagery audit | Written: read-only loader (`hime/data.py`), contract tests, imagery audit script. Not yet run |
+| 1 Data layer, imagery audit | Contracts Passed on WSL (24 Nov 2026). Imagery audit Blocked: comparison chips absent |
 | 2 Oracle world | Written (`hime/oracle.py`) |
 | 3 Features, experts | Written |
 | 4 Fusion | Written. D7 missing-chip offset not attempted |
