@@ -93,23 +93,23 @@ def load_model(enc, device):
     return fwd, prefix, mean_t, std_t
 
 
-def embed(enc, root, layer, ids, lat, lon, out, batch=128, workers=8, device="cuda"):
+def embed(enc, root, layer, ids, lat, lon, out, batch=128, workers=8, device="cuda", scales=("chip", "ctx"), d8=True):
     import torch
     out = Path(out) / enc; out.mkdir(parents=True, exist_ok=True)
     fwd, prefix, mean, std = load_model(enc, device)
     np.save(out / "ids.npy", np.asarray(ids))
-    for scale in ("chip", "ctx"):
-        done = [out / f"{scale}_{p}_{t}.npy" for p in ("cls", "mean") for t in ("none", "d8")]
+    for scale in scales:
+        done = [out / f"{scale}_{p}_{t}.npy" for p in ("cls", "mean") for t in (("none", "d8") if d8 else ("none",))]
         if all(f.exists() for f in done):
             continue
         dl = torch.utils.data.DataLoader(_Dataset(root, layer, ids, lat, lon, scale), batch_size=batch,
                                          num_workers=workers, pin_memory=True)
-        acc = {k: [] for k in ("cls_none", "mean_none", "cls_d8", "mean_d8")}
+        acc = {k: [] for k in (("cls_none", "mean_none", "cls_d8", "mean_d8") if d8 else ("cls_none", "mean_none"))}
         with torch.inference_mode(), torch.autocast("cuda", dtype=torch.float16):
             for x in dl:
                 x = (x.to(device, non_blocking=True).float() / 255.0 - mean) / std
                 cls_s, mean_s = 0, 0
-                for k in range(8):                                    # dihedral group D4
+                for k in range(8 if d8 else 1):                       # dihedral group D4
                     v = torch.rot90(x, k % 4, dims=(2, 3))
                     v = torch.flip(v, dims=(3,)) if k >= 4 else v
                     tok = fwd(v).float()
@@ -117,7 +117,8 @@ def embed(enc, root, layer, ids, lat, lon, out, batch=128, workers=8, device="cu
                     if k == 0:
                         acc["cls_none"].append(c.cpu().numpy()); acc["mean_none"].append(mp.cpu().numpy())
                     cls_s, mean_s = cls_s + c, mean_s + mp
-                acc["cls_d8"].append((cls_s / 8).cpu().numpy()); acc["mean_d8"].append((mean_s / 8).cpu().numpy())
+                if d8:
+                    acc["cls_d8"].append((cls_s / 8).cpu().numpy()); acc["mean_d8"].append((mean_s / 8).cpu().numpy())
         for k, v in acc.items():
             np.save(out / f"{scale}_{k}.npy", np.concatenate(v).astype(np.float32))
 
