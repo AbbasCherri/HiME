@@ -9,7 +9,10 @@ export PATH="$HOME/.local/bin:$PATH"
 # Determinism controls are set by the launcher, not inside Python (plan section 7).
 export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 
-[ "${1:-}" = "--pull" ] && git pull --ff-only && uv sync --python 3.12
+if [ "${1:-}" = "--pull" ]; then
+  git pull --ff-only && uv sync --python 3.12
+  exec bash "$0"          # restart: bash must not keep reading a file that pull just rewrote
+fi
 
 LOG="runs/test_logs/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$LOG"
