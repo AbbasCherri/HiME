@@ -11,15 +11,45 @@ def available():
     return torch.cuda.is_available()
 
 
+def _t(a, device):
+    import torch
+    if isinstance(a, torch.Tensor):
+        return a.to(device=device, dtype=torch.float64)
+    return torch.as_tensor(np.ascontiguousarray(a), dtype=torch.float64, device=device)
+
+
+def pca_basis(Z, device="cuda"):
+    """GPU twin of features.fed_standardise_pca on pooled rows Z (the federated sums equal the pooled ones):
+    mean, sd and the full correlation eigenbasis with the same ordering and sign rule. Torch fp64 tensors."""
+    import torch
+    Z = _t(Z, device)
+    n = Z.shape[0]
+    mu = Z.sum(0) / n
+    C = Z.T @ Z / n - torch.outer(mu, mu)
+    sd = torch.sqrt(torch.clamp(torch.diagonal(C), min=1e-12))
+    _, V = torch.linalg.eigh(C / torch.outer(sd, sd))
+    V = V.flip(1)
+    V = V * torch.sign(V[V.abs().argmax(0), torch.arange(V.shape[1], device=V.device)])
+    return mu, sd, V
+
+
+def design(Z, mu, sd, V, r=None):
+    """[1, ((Z - mu) / sd) @ V[:, :r]] on the device of the basis (features.transform plus intercept)."""
+    import torch
+    Zs = (_t(Z, mu.device) - mu) / sd
+    T = Zs @ (V if r is None else V[:, :r])
+    return torch.cat([torch.ones(len(T), 1, dtype=T.dtype, device=T.device), T], 1)
+
+
 def fit_newton(X, y, logit_pi, lams, device="cuda", gtol=1e-10, maxit=100):
     """Minimise mean softplus(z) - y z, z = X th + logit_pi, plus lam/2 ||th[1:]||^2, for each lam.
     Damped Newton: gradient, objective and iterate in fp64; Hessian built and solved in fp32 (an inexact
     Newton step still converges to the fp64 optimum because the gradient is exact). Warm-started across
     lams in ascending order. Returns an array (len(lams), d) in the order of `lams`."""
     import torch
-    Xd = torch.as_tensor(np.ascontiguousarray(X), dtype=torch.float64, device=device)
+    Xd = _t(X, device)
     X32 = Xd.float()
-    yd = torch.as_tensor(y, dtype=torch.float64, device=device)
+    yd = _t(y, device)
     n, d = Xd.shape
     pen = torch.ones(d, dtype=torch.float64, device=device)
     pen[0] = 0.0
