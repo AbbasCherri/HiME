@@ -82,7 +82,11 @@ def load_model(enc, device):
         fwd = lambda x: m.forward_features(x)
     else:
         from transformers import AutoImageProcessor, AutoModel
-        m = AutoModel.from_pretrained(name)
+        try:                                   # fused attention, as timm uses for DINOv2
+            m = AutoModel.from_pretrained(name, attn_implementation="sdpa")
+        except (ValueError, ImportError):
+            m = AutoModel.from_pretrained(name)
+        print(f"{enc}: attention {getattr(m.config, '_attn_implementation', '?')}", flush=True)
         proc = AutoImageProcessor.from_pretrained(name)
         mean, std = tuple(proc.image_mean), tuple(proc.image_std)
         prefix = 1 + int(getattr(m.config, "num_register_tokens", 0))
