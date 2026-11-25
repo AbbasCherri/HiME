@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Runs every test layer and the smoke run, logging each step to runs/test_logs/<timestamp>/.
 # Keeps going after a failure; exits non-zero if any step failed.
-# Usage: bash scripts/run_tests.sh [--pull] [--gpu] [--embed-all] [--select-v0]
+# Usage: bash scripts/run_tests.sh [--pull] [--gpu] [--embed-all] [--select-v0] [--uav-sweep]
 #   --gpu        also: embedding throughput test (2,000 buildings, every encoder) and the imagery audit
 #   --embed-all  also: the full V0 embedding grid (hours)
 #   --select-v0  also: Phase 9.1 leave-fold-out feature selection on the built grid
+#   --uav-sweep  also: UAV coverage options (higher path loss / more UAVs / as is), dev seeds
 set -uo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.local/bin:$PATH"
@@ -12,9 +13,9 @@ export PATH="$HOME/.local/bin:$PATH"
 # Determinism controls are set by the launcher, not inside Python (plan section 7).
 export PYTHONHASHSEED=0 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 
-PULL=0; GPU=0; EMBED=0; SEL=0; REST=()
+PULL=0; GPU=0; EMBED=0; SEL=0; UAV=0; REST=()
 for a in "$@"; do
-  case "$a" in --pull) PULL=1 ;; --gpu) GPU=1; REST+=("$a") ;; --embed-all) EMBED=1; REST+=("$a") ;; --select-v0) SEL=1; REST+=("$a") ;; esac
+  case "$a" in --pull) PULL=1 ;; --gpu) GPU=1; REST+=("$a") ;; --embed-all) EMBED=1; REST+=("$a") ;; --select-v0) SEL=1; REST+=("$a") ;; --uav-sweep) UAV=1; REST+=("$a") ;; esac
 done
 if [ $PULL = 1 ]; then
   git pull --ff-only && uv sync --python 3.12 --extra embed
@@ -65,6 +66,13 @@ if [ $SEL = 1 ]; then
   step select_v0 uv run python scripts/select_v0.py
   STEPS="$STEPS select_v0"
 fi
+if [ $UAV = 1 ]; then
+  for c in "117 30" "120 30" "123 30" "126 30" "117 40" "117 60" "120 60"; do
+    set -- $c
+    step uav_L$1_k$2 uv run python scripts/run_real.py --N 100 --seeds 1000 1001 1002 1003 1004 --L $1 --kmax $2 --out runs/uav_sweep/L$1_k$2
+    STEPS="$STEPS uav_L$1_k$2"
+  done
+fi
 
 echo
 echo "Summary ($LOG/summary.txt)"
@@ -83,7 +91,7 @@ $(tail -n 20 "$LOG/$k.log")"
 done
 [ -n "$F" ] && printf "\nFailures:\n%s\n" "$F" >> "$LOG/summary.txt"
 echo >> "$LOG/summary.txt"; echo "Measurements:" >> "$LOG/summary.txt"
-grep -h "O5 evidence\|greedy/opt\|w_SI under\|distance to central\|^N=\|fold 0:\|clients without\|calib share\|floored\|has_post\|images/s\|FAILED (\|Blocked\|flagged\|^test fold\|^  v0:" "$LOG"/*.log >> "$LOG/summary.txt" 2>/dev/null || true
+grep -h "O5 evidence\|greedy/opt\|w_SI under\|distance to central\|^N=\|^L=\|fold 0:\|clients without\|calib share\|floored\|has_post\|images/s\|FAILED (\|Blocked\|flagged\|^test fold\|^  v0:" "$LOG"/*.log >> "$LOG/summary.txt" 2>/dev/null || true
 [ -f runs/smoke.json ] && cp runs/smoke.json "$LOG/"
 echo; sed -n "/^Failures:\|^Measurements:/,\$p" "$LOG/summary.txt"
 exit $FAIL
