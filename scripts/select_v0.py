@@ -14,6 +14,7 @@ from pathlib import Path
 import numpy as np
 
 from hime import data as D
+from hime.gpu import available, fit_newton
 from hime.metrics import average_precision
 from hime.pipeline import prepare
 
@@ -24,7 +25,10 @@ ap.add_argument("--seeds", type=int, nargs="+", default=[1000, 1001, 1002, 1003,
 ap.add_argument("--rs", type=int, nargs="+", default=[64, 128, 256, 0], help="0 = full dimension")
 ap.add_argument("--workers", type=int, default=2, help="each worker can need several GB for full-dim cells")
 ap.add_argument("--out", default="runs/v0")
+ap.add_argument("--fit", choices=["auto", "cuda", "cpu", "scipy"], default="auto",
+                help="central fit: torch Newton on cuda/cpu, or the scipy reference; auto = cuda if available")
 a = ap.parse_args()
+FIT = ("cuda" if available() else "scipy") if a.fit == "auto" else a.fit
 NEED = ["ids.npy"] + [f"{s}_{p}_{t}.npy" for s in ("chip", "ctx") for p in ("cls", "mean") for t in ("none", "d8")]
 
 
@@ -47,10 +51,10 @@ def folds_of(seed):
 
 
 def fit_cell(job):
-    cell, seed, lams = job
+    cell, seed, lams, rs = job
     w = D.world(100, seed, eval_role="val", encoder=cell, emb_root=a.emb_root)
     out = []
-    for r in a.rs:
+    for r in rs:
         if r and r >= w["xI"].shape[1]:
             continue
         pb = prepare(w, r=r or None)
@@ -59,9 +63,14 @@ def fit_cell(job):
         Xtr, Xte = X[tr], X[pb["test_rows"]]
         dim = X.shape[1] - 1
         del pb, X
-        for lam in lams:
-            e.lam = lam
-            th = e.fit_central(Xtr, y[tr])
+        if FIT == "scipy":
+            ths = []
+            for lam in lams:
+                e.lam = lam
+                ths.append(e.fit_central(Xtr, y[tr]))
+        else:
+            ths = fit_newton(Xtr, y[tr], e.lp, lams, device=FIT)
+        for lam, th in zip(lams, ths):
             out.append(dict(cell=cell, r=r or dim, lam=lam, seed=seed,
                             auprc=average_precision(y[w["test"]], Xte @ th)))
         del Xtr, Xte
@@ -101,15 +110,16 @@ if __name__ == "__main__":
               f"run scripts/embed_v0.py first", flush=True)
         sys.exit(1)
     CELLS = [f"v0:{e}:{p}:{t}:{c}" for e, p, t, c in itertools.product(encs, ("cls", "cls+mean"), ("none", "d8"), ("0", "1"))]
-    print(f"encoders: {' '.join(encs)}; {len(CELLS)} cells x {len(a.seeds)} seeds, {a.workers} workers", flush=True)
+    print(f"encoders: {' '.join(encs)}; {len(CELLS)} cells x {len(a.seeds)} seeds, {a.workers} workers, fit {FIT}", flush=True)
     FOLDS = {s: folds_of(s) for s in a.seeds}
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    res = run([(c, s, [1e-4]) for c in CELLS for s in a.seeds])
+    res = run([(c, s, [1e-4], a.rs) for c in CELLS for s in a.seeds])
     json.dump(res, open(out / "grid.json", "w"), indent=1)
     picks = {}
     for f in range(5):
         (cell, r), stats = choose(res, f, lambda x: (x["cell"], x["r"]))
-        lres = [x for x in run([(cell, s, [1e-5, 1e-4, 1e-3, 1e-2]) for s in a.seeds]) if x["r"] == r]
+        rarg = 0 if r == max(x["r"] for x in res if x["cell"] == cell) and 0 in a.rs else r   # full dim is passed as 0
+        lres = [x for x in run([(cell, s, [1e-5, 1e-4, 1e-3, 1e-2], [rarg]) for s in a.seeds]) if x["r"] == r]
         lam = max({x["lam"] for x in lres}, key=lambda l: np.mean([x["auprc"] for x in lres if x["lam"] == l and f not in FOLDS[x["seed"]]]))
         picks[f] = dict(cell=cell, r=r, lam=lam, val_auprc=stats[(cell, r)][0], se=stats[(cell, r)][1])
         print(f"test fold {f}: {cell} r={r} lambda={lam:g} val AUPRC {stats[(cell, r)][0]:.3f} ± {stats[(cell, r)][1]:.3f}", flush=True)
