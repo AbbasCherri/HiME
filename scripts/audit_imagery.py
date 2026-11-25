@@ -1,8 +1,8 @@
 """Phase 1 imagery audit: does each seamlessphoto chip look post-event? Compares DINOv2 embeddings of the
 seamlessphoto chip with the dated post-event 2024 layers and with nendophoto2022. A building is flagged if
 its chip is closer to 2022 than to its latest 2024 chip; a block is flagged if most of its compared
-buildings are. Needs the dated layers' chips (build repo), not only the published seamlessphoto.
-Usage: uv run python scripts/audit_imagery.py [--layers-root ~/HiME-dataset-build/data]"""
+buildings are. Needs the dated layers' chips next to seamlessphoto under <data root>/chips.
+Usage: uv run python scripts/audit_imagery.py [--layers-root DIR]   (default: the data root)"""
 import argparse
 import json
 from pathlib import Path
@@ -13,11 +13,11 @@ from hime import data as D
 from hime.encoders import embed
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--layers-root", default=str(Path.home() / "HiME-dataset-build" / "data"))
+ap.add_argument("--layers-root", default=None)
 ap.add_argument("--out", default="runs/imagery_audit")
 a = ap.parse_args()
 
-lr = Path(a.layers_root).expanduser()
+lr = Path(a.layers_root).expanduser() if a.layers_root else D.data_root()
 chips = lr / "chips"
 post = sorted(p.name for p in chips.glob("20240102*")) if chips.exists() else []
 if not post or not (chips / "nendophoto2022").exists():
