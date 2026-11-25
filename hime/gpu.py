@@ -61,20 +61,33 @@ def fit_newton(X, y, logit_pi, lams, device="cuda", gtol=1e-10, maxit=100):
 
     out, th = {}, torch.zeros(d, dtype=torch.float64, device=device)
     for lam in sorted(lams):
+        exact = False                            # switch to an fp64 Hessian if an fp32 step fails
         for _ in range(maxit):
             p = torch.sigmoid(Xd @ th + logit_pi)
             g = Xd.T @ (p - yd) / n + lam * pen * th
             if g.abs().max().item() < gtol:
                 break
-            w = (p * (1 - p)).float()
-            H = (X32.T * w) @ X32 / n
-            H.diagonal().add_((lam * pen).float() + 1e-10)
-            step = torch.linalg.solve(H, g.float()).double()
+            w = p * (1 - p)
+            if exact:
+                H = (Xd.T * w) @ Xd / n
+                H.diagonal().add_(lam * pen + 1e-12)
+                step = torch.linalg.solve(H, g)
+            else:
+                H = (X32.T * w.float()) @ X32 / n
+                H.diagonal().add_((lam * pen).float() + 1e-10)
+                step = torch.linalg.solve(H, g.float()).double()
             f0, slope, t = obj(th, lam), (g @ step).item(), 1.0
             while t > 1e-10 and obj(th - t * step, lam) > f0 - 1e-4 * t * slope:
                 t *= 0.5
-            if t <= 1e-10:                       # no decrease possible: at fp64 resolution of the optimum
-                break
+            if t <= 1e-10:
+                if exact:
+                    break                        # no decrease possible even with exact steps
+                exact = True
+                continue
             th = th - t * step
+        p = torch.sigmoid(Xd @ th + logit_pi)
+        gmax = (Xd.T @ (p - yd) / n + lam * pen * th).abs().max().item()
+        if gmax > max(gtol, 1e-7):
+            raise RuntimeError(f"fit_newton did not converge (lam={lam:g}, max |grad| {gmax:.2e}, d={d}, n={n})")
         out[lam] = th.cpu().numpy()
     return np.stack([out[lam] for lam in lams])
