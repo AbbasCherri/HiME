@@ -14,7 +14,8 @@ from pathlib import Path
 import numpy as np
 
 from hime import data as D
-from hime.gpu import available, fit_newton
+from hime.experts import logit
+from hime.gpu import available, design, fit_newton, pca_basis
 from hime.metrics import average_precision
 from hime.pipeline import prepare
 
@@ -53,6 +54,8 @@ def folds_of(seed):
 def fit_cell(job):
     cell, seed, lams, rs = job
     w = D.world(100, seed, eval_role="val", encoder=cell, emb_root=a.emb_root)
+    if FIT != "scipy":
+        return fit_cell_torch(cell, seed, lams, rs, w)
     out = []
     for r in rs:
         if r and r >= w["xI"].shape[1]:
@@ -73,6 +76,28 @@ def fit_cell(job):
         for lam, th in zip(lams, ths):
             out.append(dict(cell=cell, r=r or dim, lam=lam, seed=seed,
                             auprc=average_precision(y[w["test"]], Xte @ th)))
+        del Xtr, Xte
+    return out
+
+
+def fit_cell_torch(cell, seed, lams, rs, w):
+    """Same rows, standardisation, PCA and objective as prepare() + fit_central, computed on the device:
+    the correlation eigenbasis once per job (sliced per r), design matrices built there, Newton fits."""
+    train = (w["client"] >= 0) & ~w["calib"]
+    tr = np.flatnonzero(w["client"] >= 0)                      # central: client train + calib rows
+    lp = logit(w["y"][train].mean())
+    te = np.flatnonzero(w["test"])
+    mu, sd, V = pca_basis(w["xI"][train], FIT)
+    full, out = V.shape[1], []
+    for r in rs:
+        if r and r >= full:
+            continue
+        Xtr, Xte = design(w["xI"][tr], mu, sd, V, r or None), design(w["xI"][te], mu, sd, V, r or None)
+        ths = fit_newton(Xtr, w["y"][tr], lp, lams, device=FIT)
+        Xte = Xte.cpu().numpy()
+        for lam, th in zip(lams, ths):
+            out.append(dict(cell=cell, r=r or full, lam=lam, seed=seed,
+                            auprc=average_precision(w["y"][te], Xte @ th)))
         del Xtr, Xte
     return out
 
