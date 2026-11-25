@@ -46,13 +46,14 @@ step p0_governance     $PYT tests/test_p0_governance.py
 step p1_realdata       $PYT tests/test_p1_realdata.py
 step p2_oracle         $PYT tests/test_p2_oracle.py
 step p3_experts        $PYT tests/test_p3_experts.py
+step gpu_fit           $PYT tests/test_gpu.py
 step p4_fusion         $PYT tests/test_p4_fusion.py
 step p5_placement      $PYT tests/test_p5_uav.py
 step p6_participation  $PYT tests/test_p6_participation.py
 step p7_engine         $PYT tests/test_p7_engine.py
 step smoke             uv run python scripts/smoke.py
 step real_sanity       uv run python scripts/run_real.py --N 100 --seeds 1000 --T 100
-STEPS="p0_governance p1_realdata p2_oracle p3_experts p4_fusion p5_placement p6_participation p7_engine smoke real_sanity"
+STEPS="p0_governance p1_realdata p2_oracle p3_experts gpu_fit p4_fusion p5_placement p6_participation p7_engine smoke real_sanity"
 if [ $GPU = 1 ]; then
   step embed_throughput uv run python scripts/embed_v0.py --limit 2000
   step imagery_audit    uv run python scripts/audit_imagery.py
@@ -91,7 +92,7 @@ $(tail -n 20 "$LOG/$k.log")"
 done
 [ -n "$F" ] && printf "\nFailures:\n%s\n" "$F" >> "$LOG/summary.txt"
 echo >> "$LOG/summary.txt"; echo "Measurements:" >> "$LOG/summary.txt"
-grep -h "O5 evidence\|greedy/opt\|w_SI under\|distance to central\|^N=\|^L=\|fold 0:\|clients without\|calib share\|floored\|has_post\|images/s\|FAILED (\|Blocked\|flagged\|^test fold\|^  v0:" "$LOG"/*.log >> "$LOG/summary.txt" 2>/dev/null || true
+grep -h "O5 evidence\|greedy/opt\|w_SI under\|newton vs scipy\|distance to central\|^N=\|^L=\|fold 0:\|clients without\|calib share\|floored\|has_post\|images/s\|FAILED (\|Blocked\|flagged\|^test fold\|^  v0:" "$LOG"/*.log >> "$LOG/summary.txt" 2>/dev/null || true
 [ -f runs/smoke.json ] && cp runs/smoke.json "$LOG/"
 echo; sed -n "/^Failures:\|^Measurements:/,\$p" "$LOG/summary.txt"
 exit $FAIL
