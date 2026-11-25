@@ -30,7 +30,7 @@ Set `HIME_DATA=/path/to/release` to enable the real-data tests.
 | 6 Participation | Written. O5 capped-case evidence printed by test |
 | 7 Engine, hierarchy, bytes | Written. Smoke script in `scripts/smoke.py` |
 | 8 Baselines B1-B12 | Waiting for PDFs listed in docs/PAPERS.md |
-| 9 V0 grid | Embedding script written (`scripts/embed_v0.py`); selection and tuning not yet written |
+| 9 V0 grid | DINOv2 grid built; 9.1 leave-fold-out selection run (DINOv3 pending licence). K/M/C calibration and tuning not yet written |
 | 10-12 | Blocked on baselines |
 
 ## Assumptions made where the plan or design v1 was not available (AMBIGUITY_LOG)
@@ -71,3 +71,17 @@ Set `HIME_DATA=/path/to/release` to enable the real-data tests.
 | Placement | r = 1,397 m; K hit the cap of 30 with 38% coverage, so the 70% rule cannot be met at L_max 120 dB |
 | Embedding throughput (A4500) | DINOv2 ViT-S 1,272 img/s; ViT-B 228 img/s; DINOv3 blocked by gated weights |
 | Imagery audit | Blocked: dated 2024 and 2022 chips absent on WSL |
+
+## V0 selection, DINOv2 only (25 Nov 2026, seeds 1000-1004, validation folds)
+Central image expert, 1-SE smallest-dimension rule, 2.9 h on 2 workers.
+
+| Test fold | Chosen cell | r | lambda | val AUPRC (mean ± sd) |
+|---|---|---|---|---|
+| 0 | dinov2_vits14 cls+mean d8 ctx | 64 | 0.01 | 0.250 ± 0.059 |
+| 1 | dinov2_vits14 cls+mean d8 chip | 64 | 0.01 | 0.409 ± 0.120 |
+| 2 | dinov2_vitb14 cls+mean d8 chip | 64 | 0.01 | 0.414 ± 0.114 |
+| 3 | dinov2_vitb14 cls+mean d8 chip | 64 | 0.01 | 0.384 ± 0.137 |
+| 4 | dinov2_vits14 cls+mean d8 ctx | 64 | 0.01 | 0.281 ± 0.069 |
+
+- cls+mean pooling and d8 averaging win in every fold. The top 10 cells are within 0.011 AUPRC, far inside one SE, so the encoder and context choices are not meaningfully separated.
+- r = 64 and lambda = 0.01 are both at the edge of their grids (smallest r, largest lambda). The optimum may lie outside; extending the grids (r = 32, lambda = 0.1) would need a plan deviation.
