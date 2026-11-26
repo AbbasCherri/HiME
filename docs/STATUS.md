@@ -72,16 +72,36 @@ Set `HIME_DATA=/path/to/release` to enable the real-data tests.
 | Embedding throughput (A4500) | DINOv2 ViT-S 1,272 img/s; ViT-B 228 img/s; DINOv3 blocked by gated weights |
 | Imagery audit | Blocked: dated 2024 and 2022 chips absent on WSL |
 
-## V0 selection, DINOv2 only (25 Nov 2026, seeds 1000-1004, validation folds)
-Central image expert, 1-SE smallest-dimension rule, 2.9 h on 2 workers.
+## V0 selection, all four encoders (26 Nov 2026, seeds 1000-1004, validation folds, GPU Newton fits)
+Supersedes the DINOv2-only run of 25 Nov (scipy fits).
 
-| Test fold | Chosen cell | r | lambda | val AUPRC (mean ± sd) |
+| Test fold | Chosen cell | r | lambda | val AUPRC (mean ± SE) |
 |---|---|---|---|---|
-| 0 | dinov2_vits14 cls+mean d8 ctx | 64 | 0.01 | 0.250 ± 0.059 |
-| 1 | dinov2_vits14 cls+mean d8 chip | 64 | 0.01 | 0.409 ± 0.120 |
-| 2 | dinov2_vitb14 cls+mean d8 chip | 64 | 0.01 | 0.414 ± 0.114 |
-| 3 | dinov2_vitb14 cls+mean d8 chip | 64 | 0.01 | 0.384 ± 0.137 |
-| 4 | dinov2_vits14 cls+mean d8 ctx | 64 | 0.01 | 0.281 ± 0.069 |
+| 0 | dinov3_vitb16 cls+mean d8 chip | 64 | 0.01 | 0.265 ± 0.053 |
+| 1 | dinov3_vitb16 cls+mean d8 chip | 64 | 0.01 | 0.433 ± 0.118 |
+| 2 | dinov3_vitb16 cls+mean d8 chip | 64 | 0.01 | 0.436 ± 0.117 |
+| 3 | dinov3_vitb16 cls+mean d8 chip | 64 | 0.01 | 0.392 ± 0.148 |
+| 4 | dinov3_vitb16 cls+mean d8 ctx | 64 | 0.01 | 0.291 ± 0.063 |
 
-- cls+mean pooling and d8 averaging win in every fold. The top 10 cells are within 0.011 AUPRC, far inside one SE, so the encoder and context choices are not meaningfully separated.
-- r = 64 and lambda = 0.01 are both at the edge of their grids (smallest r, largest lambda). The optimum may lie outside; extending the grids (r = 32, lambda = 0.1) would need a plan deviation.
+- DINOv3 ViT-B wins every fold; best mean 0.366 against 0.345 for the best DINOv2 cell. The satellite ViT-L is best at 0.353, not first.
+- r = 64 and lambda = 0.01 are again at the edges of their grids.
+- GPU Newton fits agree with scipy to 1e-6 (gpu_fit test, CPU and CUDA).
+
+## Imagery audit (26 Nov 2026)
+43,551 buildings and 171 blocks flagged: their seamlessphoto chip is closer to nendophoto2022 than to their latest dated 2024 chip. Not yet acted on; `world(exclude_blocks=...)` exists for excluding them.
+
+## UAV coverage sweep (26 Nov 2026, N = 100, seeds 1000-1004, validation fold)
+Coverage is that of the initial k-means placement. Gap = HiME-2 minus central AUPRC.
+
+| Path loss (dB) | UAV cap | Mean K | Mean coverage | HiME-2 AUPRC | Mean gap | Worst gap |
+|---|---|---|---|---|---|---|
+| 117 | 30 | 30 | 0.44 | 0.267 | -0.018 | -0.034 |
+| 117 | 40 | 37 | 0.52 | 0.257 | -0.028 | -0.120 |
+| 117 | 60 | 38 | 0.53 | 0.258 | -0.027 | -0.120 |
+| 120 | 30 | 30 | 0.49 | 0.270 | -0.014 | -0.050 |
+| 120 | 60 | 32 | 0.51 | 0.291 | +0.006 | -0.019 |
+| 123 | 30 | 23 | 0.47 | 0.294 | +0.010 | -0.017 |
+| 126 | 30 | 19 | 0.52 | 0.290 | +0.006 | -0.010 |
+
+- No setting reaches 70% coverage at the initial placement.
+- From 120 dB with 60 UAVs upwards, HiME-2 matches central within seed noise, with fewer UAVs as the path-loss limit rises. Five seeds cannot separate those settings.
