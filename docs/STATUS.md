@@ -105,3 +105,7 @@ Coverage is that of the initial k-means placement. Gap = HiME-2 minus central AU
 
 - No setting reaches 70% coverage at the initial placement.
 - From 120 dB with 60 UAVs upwards, HiME-2 matches central within seed noise, with fewer UAVs as the path-loss limit rises. Five seeds cannot separate those settings.
+
+## Deviations from the plan (decided 26 Nov 2026)
+- Path-loss limit 123 dB instead of 117 dB (120 dB minus 3 dB margin), chosen from the coverage sweep above.
+- V0 grids extended: PCA r adds 16 and 32; lambda adds 0.1 and 1, because r = 64 and lambda = 0.01 sat at the grid edges.
