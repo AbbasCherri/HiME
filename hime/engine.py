@@ -24,7 +24,7 @@ class Config:
     kappa: tuple = (1, 1)            # per expert, in order of pb["experts"]
     Tp: int | None = None
     correction: bool = True
-    L: float = 117.0                 # L_max 120 dB minus 3 dB margin
+    L: float = 123.0                 # path-loss limit chosen by the coverage sweep (plan: 117)
     env: str = "suburban"
     hmin: float = 10.0
     hmax: float = 150.0

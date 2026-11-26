@@ -23,7 +23,7 @@ ap.add_argument("--r", type=int, default=128, help="PCA dimension for E_I (0 = f
 ap.add_argument("--encoder", default="dinov2_vits14")
 ap.add_argument("--emb-root", default=None)
 ap.add_argument("--out", default="runs/real")
-ap.add_argument("--L", type=float, default=117.0, help="max path loss (dB)")
+ap.add_argument("--L", type=float, default=123.0, help="max path loss (dB); 123 chosen by the coverage sweep")
 ap.add_argument("--kmax", type=int, default=30, help="largest UAV count tried")
 a = ap.parse_args()
 
