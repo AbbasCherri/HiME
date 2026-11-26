@@ -1,5 +1,5 @@
 """Phase 9.1: V0 feature selection by leave-fold-out validation AUPRC (plan 2.3, D2). Central image expert,
-lambda = 1e-4; then lambda in {1e-5..1e-2} for the chosen cell. Validation folds only; no test rows read.
+lambda = 1e-4; then the lambda grid (--lams) for the chosen cell. Validation folds only; no test rows read.
 Splits repeat every 5 seeds, so seeds 1000-1004 give the 5 distinct validation folds.
 Usage: uv run python scripts/select_v0.py [--encoders dinov2_vits14 dinov2_vitb14] [--workers 3]"""
 import argparse
@@ -23,7 +23,10 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--encoders", nargs="+", default=None, help="default: every encoder found under --emb-root")
 ap.add_argument("--emb-root", default="runs/embeddings")
 ap.add_argument("--seeds", type=int, nargs="+", default=[1000, 1001, 1002, 1003, 1004])
-ap.add_argument("--rs", type=int, nargs="+", default=[64, 128, 256, 0], help="0 = full dimension")
+ap.add_argument("--rs", type=int, nargs="+", default=[16, 32, 64, 128, 256, 0],
+                help="0 = full dimension; plan grid 64-full, extended down after r=64 sat at the edge")
+ap.add_argument("--lams", type=float, nargs="+", default=[1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0],
+                help="plan grid 1e-5..1e-2, extended up after lambda=0.01 sat at the edge")
 ap.add_argument("--workers", type=int, default=2, help="each worker can need several GB for full-dim cells")
 ap.add_argument("--out", default="runs/v0")
 ap.add_argument("--fit", choices=["auto", "cuda", "cpu", "scipy"], default="auto",
@@ -144,7 +147,7 @@ if __name__ == "__main__":
     for f in range(5):
         (cell, r), stats = choose(res, f, lambda x: (x["cell"], x["r"]))
         rarg = 0 if r == max(x["r"] for x in res if x["cell"] == cell) and 0 in a.rs else r   # full dim is passed as 0
-        lres = [x for x in run([(cell, s, [1e-5, 1e-4, 1e-3, 1e-2], [rarg]) for s in a.seeds]) if x["r"] == r]
+        lres = [x for x in run([(cell, s, a.lams, [rarg]) for s in a.seeds]) if x["r"] == r]
         lam = max({x["lam"] for x in lres}, key=lambda l: np.mean([x["auprc"] for x in lres if x["lam"] == l and f not in FOLDS[x["seed"]]]))
         picks[f] = dict(cell=cell, r=r, lam=lam, val_auprc=stats[(cell, r)][0], se=stats[(cell, r)][1])
         print(f"test fold {f}: {cell} r={r} lambda={lam:g} val AUPRC {stats[(cell, r)][0]:.3f} ± {stats[(cell, r)][1]:.3f}", flush=True)
