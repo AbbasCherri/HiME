@@ -57,7 +57,8 @@ STEPS="p0_governance p1_realdata p2_oracle p3_experts gpu_fit p4_fusion p5_place
 if [ $GPU = 1 ]; then
   step embed_throughput uv run python scripts/embed_v0.py --limit 2000
   step imagery_audit    uv run python scripts/audit_imagery.py
-  STEPS="$STEPS embed_throughput imagery_audit"
+  step audit_check      uv run python scripts/audit_check.py
+  STEPS="$STEPS embed_throughput imagery_audit audit_check"
 fi
 if [ $EMBED = 1 ]; then
   step embed_all uv run python scripts/embed_v0.py
@@ -92,7 +93,7 @@ $(tail -n 20 "$LOG/$k.log")"
 done
 [ -n "$F" ] && printf "\nFailures:\n%s\n" "$F" >> "$LOG/summary.txt"
 echo >> "$LOG/summary.txt"; echo "Measurements:" >> "$LOG/summary.txt"
-grep -h "O5 evidence\|greedy/opt\|w_SI under\|newton vs scipy\|distance to central\|^N=\|^L=\|fold 0:\|clients without\|calib share\|floored\|has_post\|images/s\|FAILED (\|Blocked\|flagged\|^test fold\|^  v0:" "$LOG"/*.log >> "$LOG/summary.txt" 2>/dev/null || true
+grep -h "O5 evidence\|greedy/opt\|w_SI under\|newton vs scipy\|distance to central\|^N=\|^L=\|fold 0:\|clients without\|calib share\|floored\|has_post\|images/s\|FAILED (\|Blocked\|flagged\|^test fold\|^  v0:\|^audit check" "$LOG"/*.log >> "$LOG/summary.txt" 2>/dev/null || true
 [ -f runs/smoke.json ] && cp runs/smoke.json "$LOG/"
 echo; sed -n "/^Failures:\|^Measurements:/,\$p" "$LOG/summary.txt"
 exit $FAIL
