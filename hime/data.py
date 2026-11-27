@@ -94,8 +94,20 @@ def seismic_features(df):
     return X, int(sum((df[c].to_numpy(float) <= 0).sum() for c in LOG_IM))
 
 
+FLAG_FILE = Path("runs/imagery_audit/flagged_ids.npy")      # written by scripts/audit_imagery.py
+
+
+def image_flag(building_id, flag_file=None):
+    """1 where the imagery audit found the seamlessphoto chip closer to 2022 than to 2024 (pre-event-looking)."""
+    f = Path(flag_file or FLAG_FILE)
+    if not f.exists():
+        print(f"warning: {f} missing (run scripts/audit_imagery.py); image flag set to 0 for all rows", flush=True)
+        return np.zeros(len(building_id))
+    return np.isin(building_id, np.load(f)).astype(float)
+
+
 def world(N, seed, eval_role="val", encoder="dinov2_vits14", emb_root=None, root=None, direct_frac=0.2,
-          exclude_blocks=None):
+          exclude_blocks=None, flag_file=None):
     """Build the dict that `pipeline.prepare` consumes. Only client rows (train, calib) and the evaluation
     rows are materialised. eval_role='val' for development/tuning; 'test' goes through the TestVault."""
     from .rng import stream
@@ -136,4 +148,5 @@ def world(N, seed, eval_role="val", encoder="dinov2_vits14", emb_root=None, root
                 calib=member & (b["client_role"] == "calib").to_numpy(), test=ev,
                 client_xy=meta[["x_m", "y_m"]].to_numpy(float), direct=direct, alpha=alpha, N=len(cid),
                 building_id=b["building_id"].to_numpy(), block_id=b["block_id"].to_numpy(),
-                fold=b["fold"].to_numpy(), nonpositive_im=nonpos)
+                fold=b["fold"].to_numpy(), nonpositive_im=nonpos,
+                flag=image_flag(b["building_id"].to_numpy(), flag_file))
