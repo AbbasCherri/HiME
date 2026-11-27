@@ -109,3 +109,4 @@ Coverage is that of the initial k-means placement. Gap = HiME-2 minus central AU
 ## Deviations from the plan (decided 26 Nov 2026)
 - Path-loss limit 123 dB instead of 117 dB (120 dB minus 3 dB margin), chosen from the coverage sweep above.
 - V0 grids extended: PCA r adds 16 and 32; lambda adds 0.1 and 1, because r = 64 and lambda = 0.01 sat at the grid edges.
+- V0 1-SE rule uses a paired SE (per-seed differences from the best cell) instead of the across-seed SE, which mostly measured fold difficulty.
