@@ -117,17 +117,23 @@ def run(jobs):
 
 
 def choose(res, f, key):
-    """Leave-fold-out: seeds whose test and validation folds both differ from f; 1-SE rule, smallest dim."""
+    """Leave-fold-out: seeds whose test and validation folds both differ from f; 1-SE rule, smallest dim.
+    The SE is paired: per seed, each candidate minus the best, so fold difficulty (shared by all candidates
+    on a seed) does not widen the band. stats[k] = (mean AUPRC, paired SE of k - best)."""
     ok = [s for s in a.seeds if f not in FOLDS[s]]
     tab = {}
     for rec in res:
         if rec["seed"] in ok:
-            tab.setdefault(key(rec), []).append(rec["auprc"])
+            tab.setdefault(key(rec), {})[rec["seed"]] = rec["auprc"]
     if not tab:
         sys.exit(f"select_v0: no results for fold {f} from seeds {ok} (folds {FOLDS})")
-    stats = {k: (np.mean(v), np.std(v, ddof=1) / np.sqrt(len(v)) if len(v) > 1 else 0.0) for k, v in tab.items()}
-    best = max(stats, key=lambda k: stats[k][0])
-    near = [k for k in stats if stats[k][0] >= stats[best][0] - stats[best][1]]
+    mean = {k: np.mean(list(v.values())) for k, v in tab.items()}
+    best = max(mean, key=mean.get)
+    stats = {}
+    for k, v in tab.items():
+        d = np.array([v[s] - tab[best][s] for s in v if s in tab[best]])
+        stats[k] = (mean[k], np.std(d, ddof=1) / np.sqrt(len(d)) if len(d) > 1 else 0.0, d.mean() if len(d) else -np.inf)
+    near = [k for k in stats if stats[k][2] >= -stats[k][1]]
     return min(near, key=lambda k: (k[1], -stats[k][0])), stats
 
 
@@ -150,7 +156,7 @@ if __name__ == "__main__":
         lres = [x for x in run([(cell, s, a.lams, [rarg]) for s in a.seeds]) if x["r"] == r]
         lam = max({x["lam"] for x in lres}, key=lambda l: np.mean([x["auprc"] for x in lres if x["lam"] == l and f not in FOLDS[x["seed"]]]))
         picks[f] = dict(cell=cell, r=r, lam=lam, val_auprc=stats[(cell, r)][0], se=stats[(cell, r)][1])
-        print(f"test fold {f}: {cell} r={r} lambda={lam:g} val AUPRC {stats[(cell, r)][0]:.3f} ± {stats[(cell, r)][1]:.3f}", flush=True)
+        print(f"test fold {f}: {cell} r={r} lambda={lam:g} val AUPRC {stats[(cell, r)][0]:.3f} (paired SE vs best {stats[(cell, r)][1]:.3f})", flush=True)
     allm = {}
     for rec in res:
         allm.setdefault((rec["cell"], rec["r"]), []).append(rec["auprc"])
