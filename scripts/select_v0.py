@@ -67,7 +67,7 @@ def fit_cell(job):
         e, X, y = pb["experts"]["I"], pb["X"]["I"], pb["y"]
         tr = np.concatenate(pb["client_rows"] + [pb["calib_rows"]])     # central: whole labelled pool
         Xtr, Xte = X[tr], X[pb["test_rows"]]
-        dim = X.shape[1] - 1
+        dim = X.shape[1] - 2                                         # intercept and image flag
         del pb, X
         if FIT == "scipy":
             ths = []
@@ -84,6 +84,7 @@ def fit_cell(job):
 
 
 def fit_cell_torch(cell, seed, lams, rs, w):
+    import torch
     """Same rows, standardisation, PCA and objective as prepare() + fit_central, computed on the device:
     the correlation eigenbasis once per job (sliced per r), design matrices built there, Newton fits."""
     train = (w["client"] >= 0) & ~w["calib"]
@@ -96,6 +97,8 @@ def fit_cell_torch(cell, seed, lams, rs, w):
         if r and r >= full:
             continue
         Xtr, Xte = design(w["xI"][tr], mu, sd, V, r or None), design(w["xI"][te], mu, sd, V, r or None)
+        Xtr = torch.cat([Xtr, torch.as_tensor(w["flag"][tr], dtype=Xtr.dtype, device=Xtr.device)[:, None]], 1)
+        Xte = torch.cat([Xte, torch.as_tensor(w["flag"][te], dtype=Xte.dtype, device=Xte.device)[:, None]], 1)
         ths = fit_newton(Xtr, w["y"][tr], lp, lams, device=FIT)
         Xte = Xte.cpu().numpy()
         for lam, th in zip(lams, ths):
