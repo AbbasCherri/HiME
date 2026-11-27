@@ -19,6 +19,8 @@ def prepare(w, r=None, lam=1e-4, bins=1000, monotone=6):
     nonneg = np.concatenate([[False]] + [np.full(b.shape[1], f < monotone) for f, b in enumerate(blocks)])
     mu, sd, P = fed_standardise_pca([suff_stats(xI[r_]) for r_ in rows if len(r_)], r)
     XI = np.c_[np.ones(len(xI)), transform(xI, mu, sd, P)]
+    if "flag" in w:                                           # imagery-audit flag: pre-event-looking chip
+        XI = np.c_[XI, w["flag"]]
     pi = w["y"][train].mean()                                 # equals pooled client label counts
     lp = logit(pi)
     experts = {"S": LinearExpert(XS.shape[1], lp, lam, nonneg), "I": LinearExpert(XI.shape[1], lp, lam)}
