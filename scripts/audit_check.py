@@ -2,7 +2,7 @@
 1. near-identical chips: seamlessphoto vs nendophoto2022 cosine above 0.95 / 0.98 (same image) vs the same for 2024;
 2. collapsed vs not: a post-event chip of a collapsed building should move away from 2022, so collapsed
    buildings should be flagged less often and have a lower cos(2022) - cos(2024);
-3. image expert AUPRC on flagged vs unflagged vs not-compared validation rows (trained on train rows of the
+3. image expert AUPRC on flagged vs unflagged vs not-compared validation rows (trained on train_pool rows of the
    same seed; seeds 1000-1004 cover the 5 validation folds). Pre-event chips should push AUPRC to prevalence.
 Reads the audit's embeddings in runs/imagery_audit. Never reads test-role rows.
 Usage: uv run python scripts/audit_check.py [--cell v0:dinov3_vitb16:cls+mean:d8:0] [--r 64] [--lam 0.01]"""
@@ -81,11 +81,11 @@ grp = {"flagged": [], "compared_unflagged": [], "not_compared": []}
 ftab = dict(zip(s_ids, np.where(flag, "flagged", np.where(both, "compared_unflagged", "not_compared"))))
 for s in a.seeds:
     t = b[["y_collapse"]].join(D.split(s).set_index("building_id")["split_role"])
-    t = t[t["y_collapse"].notna() & t["split_role"].isin(["train", "val"])]
+    t = t[t["y_collapse"].notna() & t["split_role"].isin(["train_pool", "val"])]
     pos = np.searchsorted(ids, t.index.to_numpy())
     X = E[pos].astype(float)
     y = t["y_collapse"].to_numpy(float)
-    tr, va = (t["split_role"] == "train").to_numpy(), (t["split_role"] == "val").to_numpy()
+    tr, va = (t["split_role"] == "train_pool").to_numpy(), (t["split_role"] == "val").to_numpy()
     lp = logit(y[tr].mean())
     if dev:
         mu, sd, V = pca_basis(X[tr], dev)
