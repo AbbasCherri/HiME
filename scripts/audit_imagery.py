@@ -64,5 +64,6 @@ rep = dict(post_layers=post, compared=int(both.sum()), flagged_buildings=int(fla
            per_fold=df.groupby("fold")[["compared", "flagged", "block_flagged"]].mean().to_dict())
 out.mkdir(parents=True, exist_ok=True)
 np.save(out / "flagged_blocks.npy", np.asarray(flag_blocks))
+np.save(out / "flagged_ids.npy", np.asarray(s_ids[flag]))
 (out / "report.json").write_text(json.dumps(rep, indent=1, default=float))
 print(json.dumps(rep, indent=1, default=float))
